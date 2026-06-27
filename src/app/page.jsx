@@ -119,6 +119,23 @@ export default function Home() {
     setView(role === "teacher" ? "teacher" : "student");
   }
 
+  function requestEmailVerification({ name, email, role }) {
+    const displayName = name.trim() || email.split("@")[0] || "Pace User";
+    setUser({ name: displayName, email, role, emailVerified: false });
+    setStudentName(role === "student" ? displayName : "");
+    setView("verify-email");
+  }
+
+  function continueAfterVerification() {
+    if (!user) {
+      goHome();
+      return;
+    }
+
+    setUser((current) => ({ ...current, emailVerified: true }));
+    setView(user.role === "teacher" ? "teacher" : "student");
+  }
+
   function logout() {
     setUser(null);
     setStudentName("");
@@ -214,6 +231,8 @@ export default function Home() {
     user,
     openAuth,
     completeAuth,
+    requestEmailVerification,
+    continueAfterVerification,
     logout,
     goHome,
     joinQuiz,
@@ -226,6 +245,7 @@ export default function Home() {
       {view === "landing" && <Landing {...sharedProps} />}
       {view === "login" && <AuthPage {...sharedProps} mode="login" />}
       {view === "signup" && <AuthPage {...sharedProps} mode="signup" />}
+      {view === "verify-email" && <VerifyEmailPage {...sharedProps} />}
       {view === "teacher" && <TeacherDashboard {...sharedProps} />}
       {view === "student" && <StudentJoin {...sharedProps} />}
       {view === "quiz" && <QuizTaking {...sharedProps} />}
@@ -311,7 +331,15 @@ function RoleCard({ title, text, icon, onClick }) {
   );
 }
 
-function AuthPage({ mode, authRole, setAuthRole, completeAuth, openAuth, goHome }) {
+function AuthPage({
+  mode,
+  authRole,
+  setAuthRole,
+  completeAuth,
+  requestEmailVerification,
+  openAuth,
+  goHome,
+}) {
   const isSignup = mode === "signup";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -335,11 +363,18 @@ function AuthPage({ mode, authRole, setAuthRole, completeAuth, openAuth, goHome 
       return;
     }
 
-    completeAuth({
+    const authPayload = {
       name,
       email: email.trim(),
       role: authRole,
-    });
+    };
+
+    if (isSignup) {
+      requestEmailVerification(authPayload);
+      return;
+    }
+
+    completeAuth(authPayload);
   }
 
   return (
@@ -417,6 +452,46 @@ function AuthPage({ mode, authRole, setAuthRole, completeAuth, openAuth, goHome 
             {isSignup ? "Login" : "Sign up"}
           </button>
         </p>
+      </Card>
+    </main>
+  );
+}
+
+function VerifyEmailPage({ user, continueAfterVerification, openAuth, logout }) {
+  return (
+    <main className="grid min-h-screen place-items-center p-4">
+      <Card className="w-full max-w-lg p-8 text-center">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold text-primary">
+          @
+        </div>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+          Verify your email
+        </p>
+        <h1 className="mt-2 text-3xl font-bold">Check your Gmail inbox</h1>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          We sent a verification email to{" "}
+          <span className="font-semibold text-foreground">{user?.email || "your email address"}</span>.
+          Please open Gmail and click the verification link before continuing.
+        </p>
+
+        <div className="mt-6 rounded-2xl border border-warning/30 bg-warning/15 p-4 text-left">
+          <p className="text-sm font-semibold text-warning-foreground">Can&apos;t find the email?</p>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            It may take a minute to arrive. There is also a chance it landed in Spam, Junk, Promotions,
+            or Updates, so please check those folders too.
+          </p>
+        </div>
+
+        <div className="mt-7 grid gap-3 sm:grid-cols-2">
+          <Button variant="outline" onClick={() => openAuth("signup", user?.role || "teacher")}>
+            Change email
+          </Button>
+          <Button onClick={continueAfterVerification}>I verified, continue</Button>
+        </div>
+
+        <button className="mt-5 text-sm font-semibold text-muted-foreground hover:text-foreground" onClick={logout}>
+          Back to home
+        </button>
       </Card>
     </main>
   );
@@ -782,7 +857,7 @@ function QuizTaking({ currentQuiz, questionIndex, studentAnswers, setStudentAnsw
         <div className="grid gap-3">
           {question.options.map((option, index) => (
             <button
-              key={option}
+              key={`${question.id}-option-${index}`}
               onClick={() => selectAnswer(index)}
               className={`flex items-center gap-4 rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${
                 selectedAnswer === index
