@@ -16,6 +16,9 @@ export async function POST(request) {
     console.log(reqBody);
 
     // 2. Check if user already exists
+
+    // Special case for the judge account
+     const isJudge = email === "student.judge@pace.com";
     // Because 'email' is our Partition Key, we use GetCommand to check if they exist
     const getCommand = new GetCommand({
       TableName: "Users",
@@ -39,9 +42,9 @@ export async function POST(request) {
     // DynamoDB's DocumentClient handles nested objects (like 'location') automatically!
     const newUser = {
       email, // Partition Key must be here
-      username,
+      username:isJudge ? "Judge Student" : username, // Use default name for judge
       password: hashedPassword,
-      isVerified: false, // Good practice to add this for email verification
+      isVerified:isJudge ? true : false, // Auto-verify the judge! 
       dateCreated: new Date().toISOString(), // Using ISO string is best practice for dates in DynamoDB
     };
 
@@ -57,9 +60,11 @@ export async function POST(request) {
     console.log("user saved");
 
     // 6. Send Verification Email
-    // Note: In MongoDB you used savedUser._id. In DynamoDB, we use the email as the ID.
-    await sendEmail({ email, emailType: "VERIFY", userId: email });
-    console.log("email sent");
+   if (!isJudge) {
+      await sendEmail({ email, emailType: "VERIFY", userId: email });
+       console.log("email sent");
+    }
+   
 
     return NextResponse.json({
       message: "Student created successfully",

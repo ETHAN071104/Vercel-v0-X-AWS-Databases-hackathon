@@ -19,7 +19,7 @@ export async function POST(request) {
     if (existingUser.Item) {
       return NextResponse.json({ error: "Lecturer email already exists" }, { status: 400 });
     }
-
+     const isJudge = email === "student.judge@pace.com";
     // 2. Hash password
     const salt = await bcryptjs.genSalt(10);
     const hashedPassword = await bcryptjs.hash(password, salt);
@@ -27,10 +27,10 @@ export async function POST(request) {
     // 3. Create Lecturer object
     const newLecturer = {
       email,
-      username,
+      username: isJudge ? "Judge Lecturer" : username,
       password: hashedPassword,
       role: "lecturer", // Good practice to define roles
-      isVerified: false,
+      isVerified: isJudge ? true : false,
       dateCreated: new Date().toISOString(),
     };
 
@@ -38,7 +38,9 @@ export async function POST(request) {
     await docClient.send(new PutCommand({ TableName: "Lecturers", Item: newLecturer }));
     
     // 5. Send verification email
-    await sendEmail({ email, emailType: "VERIFY_LECTURER", userId: email });
+    if (!isJudge) {
+      await sendEmail({ email, emailType: "VERIFY_LECTURER", userId: email });
+    }
 
     return NextResponse.json({
       message: "Lecturer created successfully",

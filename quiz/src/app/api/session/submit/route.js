@@ -5,9 +5,9 @@ import jwt from "jsonwebtoken";
 
 export async function POST(request) {
   try {
-    const { quizId, answers, timePerQuestion } = await request.json();
+    // 1. Get questionData from frontend (FIXED!)
+    const { quizId, questionData } = await request.json();
     
-    // 1. Get student email from their token
     const token = request.cookies.get("student_token")?.value;
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
@@ -43,13 +43,13 @@ export async function POST(request) {
         selectedAnswer: qData.selectedAnswer || "No Answer",
         correctAnswer: correctAnsText,
         isCorrect: isCorrect,
-        isChanged: qData.isChanged || false, // NEW: Track if they changed their answer
-        timeSpent: totalTime, // Total time spent viewing this question
-        timePerVisit: qData.timeSpent, // Array of times [e.g., 15, 20] if visited twice
+        isChanged: qData.isChanged || false,
+        timeSpent: totalTime,
+        timePerVisit: qData.timeSpent,
+        answeredPresence: qData.answeredPresence || "active",
       };
     });
 
-    
     // 4. Generate the exact same sessionId we used when we started!
     const sessionId = `${quizId}-${studentEmail}`;
 
@@ -57,9 +57,9 @@ export async function POST(request) {
     await docClient.send(new UpdateCommand({
       TableName: "QuizSessions",
       Key: { sessionId: sessionId },
-      UpdateExpression: "set #status = :s, score = :sc, totalQuestions = :tq, gradedAnswers = :ga, completedAt = :ca",
+      UpdateExpression: "set #status = :s, score = :sc, totalQuestions = :tq, gradedAnswers = :ga, completedAt = :ca, quizTitle = :qt",
       ExpressionAttributeNames: {
-        "#status": "status" // 'status' is a reserved word in DynamoDB, so we map it!
+        "#status": "status"
       },
       ExpressionAttributeValues: {
         ":s": "completed",
@@ -67,6 +67,7 @@ export async function POST(request) {
         ":tq": quiz.questions.length,
         ":ga": gradedAnswers,
         ":ca": new Date().toISOString(),
+        ":qt": quiz.title
       },
     }));
 

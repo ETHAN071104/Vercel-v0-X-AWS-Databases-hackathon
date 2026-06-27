@@ -3,6 +3,8 @@ import { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { Button, Card, Field, Input, Header } from "@/components/ui";
+import toast from "react-hot-toast";
+
 
 export default function CreateManualQuiz() {
   const router = useRouter();
@@ -38,9 +40,10 @@ export default function CreateManualQuiz() {
     try {
       const quizData = { title, difficulty, timeLimit, category: "Manual", questions };
       await axios.post("/api/quiz", quizData, { withCredentials: true });
+      toast.success("Quiz created successfully!");
       router.push("/lecturer/dashboard");
     } catch (err) {
-      setError("Failed to create quiz. Make sure all fields are filled.");
+      toast.error("Failed to create quiz. Make sure all fields are filled.");
       console.error(err);
     } finally {
       setLoading(false);

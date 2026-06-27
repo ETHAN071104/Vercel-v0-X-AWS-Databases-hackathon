@@ -14,7 +14,6 @@ export async function GET(request, { params }) {
   try {
     const { quizId } = await params;
 
-    // 1. Fetch Quiz and Sessions
     const quizRes = await docClient.send(new GetCommand({ TableName: "Quizzes", Key: { quizId } }));
     const quiz = quizRes.Item;
     const sessionsRes = await docClient.send(new ScanCommand({
@@ -25,13 +24,15 @@ export async function GET(request, { params }) {
     const sessions = sessionsRes.Items || [];
 
     if (sessions.length === 0) {
-      return NextResponse.json({ success: true, summary: "No student data available yet to generate a summary." });
+      return NextResponse.json({ success: true, summary: "<p>No student data available yet to generate a summary.</p>" });
     }
 
-    // 2. Calculate Stats for AI
+    // Calculate Advanced Stats
     let totalScore = 0;
+    let totalIntegrityFlags = 0;
     const questionMisses = Array(quiz.questions.length).fill(0);
     const questionTimes = Array(quiz.questions.length).fill(0);
+    const questionChanges = Array(quiz.questions.length).fill(0);
 
     sessions.forEach(s => {
       totalScore += s.score || 0;
@@ -39,6 +40,10 @@ export async function GET(request, { params }) {
         s.gradedAnswers.forEach((ans, i) => {
           if (!ans.isCorrect) questionMisses[i]++;
           questionTimes[i] += ans.timeSpent || 0;
+          if (ans.isChanged) questionChanges[i]++;
+          if (ans.answeredPresence && ans.answeredPresence !== "active") {
+            totalIntegrityFlags++;
+          }
         });
       }
     });
@@ -46,16 +51,21 @@ export async function GET(request, { params }) {
     const avgScore = (totalScore / sessions.length).toFixed(1);
     const hardestQuestionIndex = questionMisses.indexOf(Math.max(...questionMisses));
     const hardestQuestionText = quiz.questions[hardestQuestionIndex]?.questionText || "N/A";
+    
+    const mostChangedIndex = questionChanges.indexOf(Math.max(...questionChanges));
+    const mostChangedText = quiz.questions[mostChangedIndex]?.questionText || "N/A";
 
-    // 3. Prompt Groq
     const prompt = `
-      You are an expert academic advisor. Analyze the following quiz data and write a brief, 3-bullet-point summary for the professor.
-      Data: 
+      You are an expert academic advisor analyzing quiz data. Provide a brief, highly insightful summary in 3-4 HTML bullet points (<ul><li>) for the professor.
+      
+      Data:
       - Number of students: ${sessions.length}
       - Average score: ${avgScore} out of ${quiz.questions.length}
-      - The question most students got wrong was: "${hardestQuestionText}" (${Math.max(...questionMisses)} students missed it).
-      
-      Write a concise, encouraging, and insightful summary. Format as HTML <ul><li> tags.
+      - Hardest question (most incorrect): "${hardestQuestionText}" (${Math.max(...questionMisses)} students missed it).
+      - Most hesitated question (most answer changes): "${mostChangedText}" (${Math.max(...questionChanges)} students changed their answer).
+      - Academic integrity flags (tab switches, window blurs, copy/paste attempts): ${totalIntegrityFlags} total flags detected.
+
+      Write a concise, encouraging, and actionable summary. Format as HTML <ul><li> tags only.
     `;
 
     const response = await openai.chat.completions.create({

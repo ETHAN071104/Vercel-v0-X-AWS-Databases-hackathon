@@ -74,7 +74,7 @@ export default function StudentDashboard() {
                   <Card key={quiz.sessionId} className="p-5 flex justify-between items-center">
                     <div>
                       <p className="font-semibold text-muted-foreground text-sm">Completed</p>
-                      <p className="text-lg font-bold">{quiz.quizId}</p>
+                      <p className="text-lg font-bold">{quiz.quizTitle || quiz.quizId}</p>
                     </div>
                     <div className="text-right">
                       <p className={`text-2xl font-bold ${percent > 50 ? 'text-success' : 'text-destructive'}`}>{percent}%</p>

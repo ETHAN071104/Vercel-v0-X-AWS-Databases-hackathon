@@ -56,19 +56,22 @@ export default function MonitorQuiz() {
     finally { setLoadingSummary(false); }
   };
 
-  // NEW: CSV Export Function
+    // UPGRADED CSV Export Function
   const exportCSV = () => {
     if (!quiz || sessions.length === 0) return;
     
     let csv = "Student Email,Score,";
-    quiz.questions.forEach((_, i) => csv += `Q${i+1} Answer,Q${i+1} Time(s),Q${i+1} Changed?,`);
+    quiz.questions.forEach((_, i) => {
+      csv += `Q${i+1} Answer,Q${i+1} Time(s),Q${i+1} Changed?,Q${i+1} Presence,`;
+    });
     csv += "\n";
 
     sessions.forEach(s => {
       csv += `${s.studentEmail},${s.score}/${s.totalQuestions},`;
       if (s.gradedAnswers) {
         s.gradedAnswers.forEach(ans => {
-          csv += `"${ans.selectedAnswer}",${ans.timeSpent},${ans.isChanged ? 'Yes' : 'No'},`;
+          // Wrap answer in quotes to escape commas in the text
+          csv += `"${ans.selectedAnswer}",${ans.timeSpent},${ans.isChanged ? 'Yes' : 'No'},${ans.answeredPresence || 'active'},`;
         });
       }
       csv += "\n";
@@ -78,7 +81,7 @@ export default function MonitorQuiz() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${quiz.title}_analytics.csv`;
+    a.download = `${quiz.title.replace(/\s/g, '_')}_analytics.csv`;
     a.click();
   };
 
@@ -160,7 +163,13 @@ export default function MonitorQuiz() {
                   let presenceBadge = <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full">Offline</span>;
                   if (isOnline && session.status === "in_progress") {
                     if (session.presence === "tab_switched") presenceBadge = <span className="text-xs bg-warning/20 text-warning-foreground px-2 py-1 rounded-full animate-pulse">⚠️ Tab Switched</span>;
+                    else if (session.presence === "window_blur") 
+                      presenceBadge = <span className="text-xs bg-purple-200 text-purple-900 px-2 py-1 rounded-full animate-pulse">💻 Left App</span>;
+                    else if (session.presence === "copy_paste_attempt") 
+                      presenceBadge = <span className="text-xs bg-red-200 text-red-900 px-2 py-1 rounded-full animate-pulse">📋 Copy/Paste</span>;
                     else if (session.presence === "disconnected") presenceBadge = <span className="text-xs bg-destructive/10 text-destructive px-2 py-1 rounded-full animate-pulse">🔴 Disconnected</span>;
+                    else if (session.presence === "not_fullscreen")
+                      presenceBadge = <span className="text-xs bg-orange-200 text-orange-900 px-2 py-1 rounded-full animate-pulse">🖵 Windowed</span>;
                     else presenceBadge = <span className="text-xs bg-success/15 text-success px-2 py-1 rounded-full animate-pulse">🟢 Active</span>;
                   } else if (session.status === "completed") {
                     presenceBadge = <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">Completed</span>;
@@ -178,6 +187,14 @@ export default function MonitorQuiz() {
                             {ans.timeSpent}s
                             {/* NEW: Show pencil icon if answer was changed */}
                             {ans.isChanged && <span className="ml-1" title={`Changed answer. Visited ${ans.timePerVisit?.length || 1} times.`}>✏️</span>}
+                            {ans.answeredPresence === "tab_switched" && (
+                              <span className="ml-1 text-orange-600" title="Answered while looking at another window!">🕵️</span>
+                            )}
+                            {ans.answeredPresence === "not_fullscreen" && (
+                              <span className="ml-1 text-orange-600" title="Answered while not in fullscreen!">🖵</span>
+                            )}
+                            {ans.answeredPresence === "window_blur" && <span className="ml-1 text-purple-600" title="Clicked out of browser">💻</span>}
+                            {ans.answeredPresence === "copy_paste_attempt" && <span className="ml-1 text-red-600" title="Tried to Copy/Paste">📋</span>}
                           </td>
                         ))
                       ) : (
@@ -202,9 +219,13 @@ export default function MonitorQuiz() {
 
         <div className="flex gap-4 mt-4 text-xs text-muted-foreground justify-end flex-wrap">
           <div className="flex items-center gap-1"><div className="w-3 h-3 bg-success/15 rounded-sm"></div> Fast & Correct</div>
-          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-warning/15 rounded-sm"></div> Slow/Hesitant</div>
+          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-warning/15 rounded-sm"></div> Slow/Hesitant--correct</div>
           <div className="flex items-center gap-1"><div className="w-3 h-3 bg-destructive/10 rounded-sm"></div> Incorrect</div>
           <div className="flex items-center gap-1">✏️ Answer Changed</div>
+          <div className="flex items-center gap-1">🕵️ Tab Switched</div>
+          <div className="flex items-center gap-1">🖵 Not Fullscreen</div>
+          <div className="flex items-center gap-1">💻 Window Blurred(opened other app)</div>
+          <div className="flex items-center gap-1">📋 Copy/Paste Attempt</div>
         </div>
       </section>
     </main>

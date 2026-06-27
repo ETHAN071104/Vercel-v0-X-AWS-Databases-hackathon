@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
 import { Button } from "@/components/ui";
+import { ThemeToggle } from "@/components/ThemeToggle"; // ADD THIS
 
 export default function Navbar({ role, onLogout }) {
-  // Students use /student, Lecturers use /lecturer/dashboard
   const dashboardPath = role === "student" ? "/student" : "/lecturer/dashboard";
   
   return (
@@ -16,10 +16,10 @@ export default function Navbar({ role, onLogout }) {
           <Link href={dashboardPath}>
             <Button variant="ghost">Dashboard</Button>
           </Link>
-          {/* NEW: Profile Link */}
           <Link href={`/${role}/profile`}>
             <Button variant="ghost">Profile</Button>
           </Link>
+          <ThemeToggle /> {/* ADD THIS */}
           <Button variant="outline" onClick={onLogout}>Logout</Button>
         </nav>
       </div>
