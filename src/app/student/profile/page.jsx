@@ -2,14 +2,17 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import { Card, Stat } from "@/components/ui";
+import { Button, Card, Stat } from "@/components/ui";
+import toast from "react-hot-toast";
 import Navbar from "@/components/navbar";
+
+
 export default function StudentProfile() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [quizzesTaken, setQuizzesTaken] = useState(0);
   const [loading, setLoading] = useState(true);
-
+  const [deleting, setDeleting] = useState(false);
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -29,6 +32,23 @@ export default function StudentProfile() {
     };
     fetchUserData();
   }, []);
+
+   const handleDeleteAccount = async () => {
+    // Simple confirmation for the hackathon
+    const confirmDelete = window.confirm("Are you absolutely sure? This will permanently delete your account and data.");
+    if (!confirmDelete) return;
+
+    setDeleting(true);
+    try {
+      await axios.post("/api/auth/delete-account", {}, { withCredentials: true });
+      toast.success("Account deleted. Redirecting...");
+      setTimeout(() => router.push("/"), 1500);
+    } catch (err) {
+      toast.error("Failed to delete account.");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleLogout = async () => {
     await axios.get("/api/auth/logout");
@@ -61,8 +81,21 @@ export default function StudentProfile() {
 
           {/* Simplified Stats Grid */}
           <div className="grid gap-4 sm:grid-cols-2">
+            
             <Stat label="Role" value="Student" />
             <Stat label="Quizzes Taken" value={quizzesTaken} />
+          </div>
+           <div className="mt-8 pt-6 border-t border-destructive/30 bg-destructive/5 -mx-8 -mb-8 px-8 py-6 rounded-b-2xl">
+            <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-destructive mb-2">Danger Zone</h3>
+            <p className="text-xs text-muted-foreground mb-4">Permanently delete your account and remove your data from our database.</p>
+            <Button 
+              variant="danger" 
+              onClick={handleDeleteAccount} 
+              disabled={deleting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete My Account"}
+            </Button>
           </div>
         </Card>
       </section>
