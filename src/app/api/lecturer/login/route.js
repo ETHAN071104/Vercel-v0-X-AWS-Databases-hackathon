@@ -40,7 +40,7 @@ export async function POST(request) {
 
     // 5. Set cookie as 'lecturer_token' (This is what our middleware and dashboard look for!)
     const res = NextResponse.json({ message: "Login successful", success: true });
-    res.cookies.set("lecturer_token", token, { httpOnly: true });
+    res.cookies.set("lecturer_token", token, { httpOnly: true, secure: true, });
 
     return res;
   } catch (error) {

@@ -70,7 +70,7 @@ export async function POST(request) {
 
     res.cookies.set("student_token", token, {
       httpOnly: true,
-      // secure: true, // Uncomment this when you deploy to HTTPS (like Vercel)
+       secure: true, 
     });
 
     return res;

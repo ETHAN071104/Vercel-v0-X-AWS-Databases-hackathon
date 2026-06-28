@@ -19,7 +19,7 @@ export async function POST(request) {
     if (existingUser.Item) {
       return NextResponse.json({ error: "Lecturer email already exists" }, { status: 400 });
     }
-     const isJudge = email === "student.judge@pace.com";
+     const isJudge = email === "lecturer.judge@pace.com";
     // 2. Hash password
     const salt = await bcryptjs.genSalt(10);
     const hashedPassword = await bcryptjs.hash(password, salt);
