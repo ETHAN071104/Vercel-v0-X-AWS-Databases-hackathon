@@ -71,7 +71,7 @@ export const sendEmail = async ({ email, emailType, userId }) => {
     const basePath = isVerify ? "verify-email" : "reset-password";
     const rolePath = isLecturer ? "lecturer/" : "";
     
-    const verifyUrl = `${process.env.DOMAIN}/${rolePath}${basePath}?token=${hashedToken}`;
+    const verifyUrl = `${process.env.domain}/${rolePath}${basePath}?token=${hashedToken}`;
 
     // 6. Enhanced Aesthetic HTML Template
     const htmlTemplate = `
